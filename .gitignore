@@ -1,0 +1,21 @@
+# Ignore binaries and build outputs
+*.exe
+*.out
+*.o
+*.obj
+*.log
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+# Ignore Eigen library
+Eigen/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+
+# Ignore build directories
+build/
+bin/
