@@ -113,6 +113,9 @@ for step in range(20):
     ax.set_title(f"Step {step+1}")
     ax.set_xlim(0,9)
     ax.set_ylim(0,6)
+    dx = ball_pose[0] - robot_pose[0]
+    dy = ball_pose[1] - robot_pose[1]
+    robot_pose[2] = atan2(dy, dx)
     #ngitung FOV
     fov_length = 10 
     theta = robot_pose[2]
@@ -136,12 +139,14 @@ for step in range(20):
         ec='black'
     )
 
-    ball_vel = np.random.uniform(-0.20, 0.20, size = 2)
+    ball_vel = np.random.uniform(-0.28, 0.28, size = 2)
     ball_dot = ax.scatter([], [], c='purple', s=100, marker='o', label='Ball')
     (line_to_ball,) = ax.plot([], [], 'k--', alpha=0.4, label='Ball Connection')
+    decay = 0.85
     #Ball moving + estimating with EKF (later)
     for sub in range(10):
         ball_pose+=ball_vel
+        ball_vel*=decay
         if ball_pose[0] >= 8.8 or ball_pose[0] <= 0.2:
             ball_vel[0] *= -1  
         if ball_pose[1] >= 5.8 or ball_pose[1] <= 0.2:
