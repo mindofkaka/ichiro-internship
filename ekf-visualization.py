@@ -29,33 +29,37 @@ def rmse(a, b):
     dif = a-b
     return np.linalg.norm(dif)
 
-def ekfUpdate(robot_pose, measurements, P_init, Q_lm, R):
-    theta = robot_pose[2]
-    x_init = robot_pose[0] + measurements[i][0] * cos(theta + measurements[i][1])
-    y_init = robot_pose[1] + measurements[i][0] * sin(theta + measurements[i][1])
-    init_est = np.array([x_init, y_init])
-    dx = init_est[0] - robot_pose[0]
-    dy = init_est[1] - robot_pose[1]
+def ekfUpdate(robot_pose, measurements, P_init, Q_lm, R, landmark_est, i):
+    xr, yr, theta = robot_pose
+    P_pred = P_init + Q_lm
+    
+    dx = landmark_est[0] - xr
+    dy = landmark_est[1] - yr 
     q = dx*dx + dy*dy
     if q < 1e-8: q = 1e-8
     pred_r = sqrt(q)
-    pred_b = atan2(dy, dx) - robot_pose[2]
+    pred_b = atan2(dy, dx) - theta
     pred_b = wrap_angle(pred_b)
-    P = P_init.copy()
-    P_pred = P + Q_lm
-    x_pred = init_est.copy()
+    hvec = np.array([pred_r, pred_b])
+
     H = np.array([[dx/pred_r, dy/pred_r],
                 [-dy/q, dx/q]])
-    zvec = np.array([measurements[i][0], measurements[i][1]])
-    hvec = np.array([pred_r, pred_b])
+    zvec = np.array([measurements[i][0], wrap_angle(measurements[i][1])])
+
     y = zvec - hvec
     y[1] = wrap_angle(y[1])
-    S = H @ P @ H.T + R
+    S = H @ P_pred @ H.T + R
+    print(y)
+    d2 = float(y.T @ np.linalg.inv(S) @ y)
+    chi2_threshold = 4.61
+    if d2 > chi2_threshold:
+        return (x_upd, P_upd, d2)
+
     K = P_pred @ H.T @ np.linalg.inv(S)
-    x_upd = x_pred + K @ y
+    x_upd = landmark_est + K @ y
     I = np.identity(2)
     P_upd = (I - K @ H) @ P_pred
-    return (x_upd, P_upd)
+    return (x_upd, P_upd, d2)
 
 def computeTrueMeasurement(robot_pose, landmark_pose):
     dx = landmark_pose[0] - robot_pose[0]
@@ -95,8 +99,8 @@ def ekfUpdateSingle(robot_pose, noisyData, P_init, Q_lm, R):
 
 
 #Tuning measurement noise
-sigma_r = 0.20
-sigma_b_deg = 0.05
+sigma_r = 0.30
+sigma_b_deg = 1.0
 sigma_b = np.deg2rad(sigma_b_deg)
 
 R = np.diag([sigma_r**2, sigma_b**2])
@@ -204,7 +208,10 @@ for step in range(20):
                 # })
                 continue
             ax.plot([robot_pose[0], lx], [robot_pose[1], ly], 'k--', alpha=0.4) #line from robot to landmark
-            est, cov = ekfUpdate(robot_pose, measurements, P_init, Q_lm, R)
+            landmark_est = np.array([lx + np.random.uniform(-0.5, 0.5),
+                                     ly + np.random.uniform(-0.5, 0.5)])
+            est, cov, maha = ekfUpdate(robot_pose, measurements, P_init, Q_lm, R, landmark_est, i)
+            print(f"Mahalanobis distance: {maha:.3f}")
             ax.scatter(est[0], est[1], c='green', marker='x', s=100)
             plt.pause(0.1)
             # final_est.append({
