@@ -51,8 +51,10 @@ def ekfUpdate(robot_pose, measurements, P_init, Q_lm, R, landmark_est, i):
     S = H @ P_pred @ H.T + R
     print(y)
     d2 = float(y.T @ np.linalg.inv(S) @ y)
-    chi2_threshold = 4.61
-    if d2 > chi2_threshold:
+    base_threshold = 3.22 # 80% for 2 DOF
+    alpha = 0.05
+    threshold = base_threshold * (1 + alpha * np.linalg.det(S))
+    if d2 > threshold:
         return (x_upd, P_upd, d2)
 
     K = P_pred @ H.T @ np.linalg.inv(S)
