@@ -42,6 +42,6 @@ P_init = np.eye(2)*3.2   # initial landmark covariance
 Q_lm = np.eye(2)*1e-5    # process noise covariance
 
 # Requirements 💻
-winget install Python.Python.3
+**python 3 installed**
 
 pip install numpy matplotlib pandas
