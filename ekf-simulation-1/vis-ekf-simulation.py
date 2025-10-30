@@ -172,11 +172,11 @@ ax_step  = plt.axes([0.5, 0.23, 0.15, 0.05]); btn_step  = Button(ax_step, "Step"
 ax_reset = plt.axes([0.7, 0.23, 0.15, 0.05]); btn_reset = Button(ax_reset, "Reset")
 ax_reset_all = plt.axes([0.1, 0.15, 0.2, 0.05]); btn_reset_all = Button(ax_reset_all, "Reset All")
 
-ax_q_ball = plt.axes([0.1, 0.08, 0.15, 0.05]); txt_q_ball = TextBox(ax_q_ball, "Ball Q", initial="0.001")
-ax_r_ball = plt.axes([0.3, 0.08, 0.15, 0.05]); txt_r_ball = TextBox(ax_r_ball, "Ball R", initial="0.2")
+ax_q_ball = plt.axes([0.1, 0.08, 0.15, 0.05]); txt_q_ball = TextBox(ax_q_ball, "Ball Q", initial="0.002, 0.05")
+ax_r_ball = plt.axes([0.3, 0.08, 0.15, 0.05]); txt_r_ball = TextBox(ax_r_ball, "Ball R", initial=f"{meas_range_noise:.2f}, {meas_bearing_noise:.2f}")
 
-ax_q_lm = plt.axes([0.5, 0.08, 0.15, 0.05]); txt_q_lm = TextBox(ax_q_lm, "LM Q", initial="0.00005")
-ax_r_lm = plt.axes([0.7, 0.08, 0.15, 0.05]); txt_r_lm = TextBox(ax_r_lm, "LM R", initial=str(meas_range_noise**2))
+ax_q_lm = plt.axes([0.5, 0.08, 0.15, 0.05]); txt_q_lm = TextBox(ax_q_lm, "LM Q", initial="1e-12")
+ax_r_lm = plt.axes([0.7, 0.08, 0.15, 0.05]); txt_r_lm = TextBox(ax_r_lm, "LM R", initial=f"{meas_range_noise:.2f}, {meas_bearing_noise:.2f}")
 
 ax_landmarks = plt.axes([0.65, 0.15, 0.15, 0.05])
 txt_landmarks = TextBox(ax_landmarks, "Landmarks", initial=str(n_landmarks))
