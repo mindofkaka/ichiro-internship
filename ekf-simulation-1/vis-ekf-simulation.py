@@ -199,30 +199,45 @@ def draw_scene():
     ax.plot(robot_gt[0], robot_gt[1], 'ks', markersize=8, label="Robot GT")
     ax.plot(robot_odom[0], robot_odom[1], 'o', color='gray', markersize=5, label="Odom")
 
+    fov_deg = 78
+    half_fov = np.deg2rad(fov_deg/2)
+    fov_length = 4.0
+    theta = robot_gt[2]
+
+    left_x = [robot_gt[0], robot_gt[0] + fov_length * np.cos(theta + half_fov)]
+    left_y = [robot_gt[1], robot_gt[1] + fov_length * np.sin(theta + half_fov)]
+    right_x = [robot_gt[0], robot_gt[0] + fov_length * np.cos(theta - half_fov)]
+    right_y = [robot_gt[1], robot_gt[1] + fov_length * np.sin(theta - half_fov)]
+    ax.plot(left_x, left_y, 'b--', alpha=0.8, linewidth=1.2)
+    ax.plot(right_x, right_y, 'b--', alpha=0.8, linewidth=1.2)
+
     for i, lm in enumerate(landmarks):
         ax.scatter(lm[0], lm[1], marker='*', s=120, color=colors[i], label=f"LM{i+1} GT")
         lm_robot = global_to_robot(robot_gt, lm)
-        meas = lm_robot + np.random.randn(2) * meas_range_noise
-        meas_global = robot_to_global(robot_odom, meas)
-
-        r_meas = np.linalg.norm(meas)
-        b_meas = atan2(meas[1], meas[0])
-        z_global = np.array([r_meas, b_meas])
-
+        bearing = atan2(lm_robot[1], lm_robot[0])
         ekfs[i].predict(dt)
-        ekfs[i].update(z_global, robot_odom)
 
-        ax.scatter(meas_global[0], meas_global[1], marker='x', color=colors[i])
+        visible = abs(wrap_angle(bearing)) <= half_fov
+
+        if visible:
+            meas = lm_robot + np.random.randn(2) * meas_range_noise
+            meas_global = robot_to_global(robot_odom, meas)
+
+            r_meas = np.linalg.norm(meas)
+            b_meas = atan2(meas[1], meas[0])
+            z_global = np.array([r_meas, b_meas])
+
+            ekfs[i].update(z_global, robot_odom)
+            ax.scatter(meas_global[0], meas_global[1], marker='x', color=colors[i])
+            ax.plot([robot_gt[0], meas_global[0]], [robot_gt[1], meas_global[1]],
+                linestyle='--', color=colors[i], alpha=0.5)
+            ax.text(meas_global[0]+0.1, meas_global[1],
+                    f"raw ({meas_global[0]:.2f},{meas_global[1]:.2f})",
+                    fontsize=7, color=colors[i])
+
         ekf_xy = ekfs[i].x
         ax.scatter(ekf_xy[0], ekf_xy[1], marker='o', color=colors[i], ec='black')
 
-        ax.plot([robot_gt[0], meas_global[0]], [robot_gt[1], meas_global[1]],
-                linestyle='--', color=colors[i], alpha=0.5)
-
-        # teks
-        ax.text(meas_global[0]+0.1, meas_global[1],
-                f"raw ({meas_global[0]:.2f},{meas_global[1]:.2f})",
-                fontsize=7, color=colors[i])
         ax.text(ekf_xy[0]+0.1, ekf_xy[1],
                 f"filt ({ekf_xy[0]:.2f},{ekf_xy[1]:.2f})",
                 fontsize=7, color=colors[i])
@@ -237,6 +252,9 @@ def draw_scene():
     ball_robot = global_to_robot(robot_gt, ball_pos)
     meas_ball = ball_robot + np.random.randn(2) * meas_range_noise
     meas_ball_global = robot_to_global(robot_odom, meas_ball)
+
+    bearing = atan2(ball_robot[1], ball_robot[0])
+    if abs(wrap_angle(bearing)) > half_fov: return
 
     r_meas_ball = np.linalg.norm(meas_ball)
     b_meas_ball = atan2(meas_ball[1], meas_ball[0])
