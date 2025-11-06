@@ -42,7 +42,7 @@ class EKFStatic2D:
         self.x = x0.copy().reshape(2)
         self.P = P0.copy()
         self.Q = np.eye(2) * 1e-12
-        self.R = np.diag([meas_range_noise**2 * 1.3, meas_bearing_noise**2 * 1.5])
+        self.R = np.diag([0.0, 0.0])
 
     def predict(self, dt):
         self.P = self.P + self.Q * dt
@@ -77,6 +77,12 @@ class EKFStatic2D:
 
         y = z_vec - h_vec
 
+        base_sigma_r = meas_range_noise
+        base_sigma_b = meas_bearing_noise
+        distance = sqrt(q)
+        adaptive_sigma_r = base_sigma_r * (1 + 0.05 * distance)  # increase with distance
+        adaptive_sigma_b = base_sigma_b * (1 + 0.3 * abs(pred_b)) # increase with angle
+        self.R = np.diag([adaptive_sigma_r**2, adaptive_sigma_b**2])
         # 4. Update (S, K, x, P) - sama seperti EKF standar
         S = H @ self.P @ H.T + self.R
         d2 = float(y.T @ np.linalg.inv(S) @ y)
@@ -94,7 +100,7 @@ class EKFBall:
         self.x = x0.copy().reshape(4)
         self.P = P0.copy()
         self.Q = np.diag([0.002, 0.002, 0.05, 0.05])
-        self.R = np.diag([meas_range_noise**2, meas_bearing_noise**2])
+        self.R = np.diag([0.0,0.0])
 
     def predict(self, dt):
         F = np.array([
@@ -129,6 +135,13 @@ class EKFBall:
         ])
         z_vec = z.copy()
         y = z_vec - h_vec
+
+        base_sigma_r = meas_range_noise
+        base_sigma_b = meas_bearing_noise
+        distance = sqrt(q)
+        adaptive_sigma_r = base_sigma_r * (1 + 0.05 * distance)  # increase with distance
+        adaptive_sigma_b = base_sigma_b * (1 + 0.3 * abs(pred_b)) # increase with angle
+        self.R = np.diag([adaptive_sigma_r**2, adaptive_sigma_b**2])
         S = H @ self.P @ H.T + self.R
         d2 = float(y.T @ np.linalg.inv(S) @ y)
         threshold = 5.99 # 99% for 2 DOF
@@ -186,6 +199,19 @@ paused = False
 step_mode = False
 current_step = 0
 
+def draw_covariance_ellipse(ax, mean, cov, color='black', alpha=0.25):
+    if cov.shape != (2, 2):
+        cov = cov[:2, :2]
+    vals, vecs = np.linalg.eigh(cov)
+    order = vals.argsort()[::-1]
+    vals, vecs = vals[order], vecs[:, order]
+    angle = np.degrees(np.arctan2(vecs[1,0], vecs[0,0]))
+    width, height = 2 * np.sqrt(vals)
+    ell = Ellipse(xy=mean, width=width, height=height, angle=angle,
+                  edgecolor=color, facecolor='none', lw=1.5, alpha=alpha)
+    ax.add_patch(ell)
+
+
 def draw_scene():
     ax.clear()
     ax.set_xlim(-1, 11)
@@ -241,12 +267,9 @@ def draw_scene():
         ax.text(ekf_xy[0]+0.1, ekf_xy[1],
                 f"filt ({ekf_xy[0]:.2f},{ekf_xy[1]:.2f})",
                 fontsize=7, color=colors[i])
-
-        P = ekfs[i].P
-        vals, vecs = np.linalg.eigh(P)
-        angle = np.degrees(np.arctan2(vecs[1,0], vecs[0,0]))
-        width, height = 2*np.sqrt(vals)
-        ax.add_patch(Ellipse(xy=ekf_xy, width=width, height=height, angle=angle, alpha=0.2, color=colors[i]))
+        
+        draw_covariance_ellipse(ax, ekfs[i].x, ekfs[i].P, color=colors[i], alpha=0.3)
+        draw_covariance_ellipse(ax, ekf_ball.x[:2], ekf_ball.P[:2, :2], color='blue', alpha=0.3)
 
     ax.scatter(ball_pos[0], ball_pos[1], s=100, color='red', marker='o', label="Ball GT")
     ball_robot = global_to_robot(robot_gt, ball_pos)
